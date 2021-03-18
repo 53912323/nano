@@ -394,13 +394,6 @@ func (n *Node) storeSession(s *session.Session) {
 	n.mu.Unlock()
 }
 
-func (n *Node) removeSession(s *session.Session) {
-	n.mu.Lock()
-	delete(n.sessions, s.ID())
-	n.mu.Unlock()
-	metrics.ReportNumberOfConnectedClients(n.Options.MetricsReporters, int64(len(n.sessions)))
-}
-
 func (n *Node) findSession(sid int64) *session.Session {
 	n.mu.RLock()
 	s := n.sessions[sid]
@@ -502,8 +495,9 @@ func (n *Node) SessionClosed(_ context.Context, req *clusterpb.SessionClosedRequ
 	n.mu.Lock()
 	s, found := n.sessions[req.SessionId]
 	delete(n.sessions, req.SessionId)
+	l := len(n.sessions)
 	n.mu.Unlock()
-	metrics.ReportNumberOfConnectedClients(n.Options.MetricsReporters, int64(len(n.sessions)))
+	metrics.ReportNumberOfConnectedClients(n.Options.MetricsReporters, int64(l))
 	if found {
 		scheduler.PushTask(func() { session.Lifetime.Close(s) })
 	}
@@ -515,9 +509,11 @@ func (n *Node) CloseSession(_ context.Context, req *clusterpb.CloseSessionReques
 	n.mu.Lock()
 	s, found := n.sessions[req.SessionId]
 	delete(n.sessions, req.SessionId)
+	l := len(n.sessions)
 	n.mu.Unlock()
 	if found {
 		s.Close()
 	}
+	metrics.ReportNumberOfConnectedClients(n.Options.MetricsReporters, int64(l))
 	return &clusterpb.CloseSessionResponse{}, nil
 }

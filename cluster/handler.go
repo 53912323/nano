@@ -521,7 +521,7 @@ func (h *LocalHandler) localProcess(handler *component.Handler, lastMid uint64, 
 		}
 
 		if env.Debug {
-			end := time.Now().Unix()
+			end := time.Now().UnixNano()
 			log.Println(fmt.Sprintf("--%s time end:%d", handler.Method.Func.String(), end-start))
 		}
 	}

@@ -40,17 +40,19 @@ type LocalScheduler interface {
 	Schedule(Task)
 }
 
-type Task func()
-
 type Hook func()
 
 var (
 	chDie   = make(chan struct{})
 	chExit  = make(chan struct{})
-	chTasks = make(chan Task, 1<<8)
+	tc      *TaskWithCache
 	started int32
 	closed  int32
 )
+
+func init() {
+	tc = NewTaskWithCache()
+}
 
 func try(f func()) {
 	defer func() {
@@ -79,7 +81,8 @@ func Sched() {
 		case <-ticker.C:
 			cron()
 
-		case f := <-chTasks:
+		case f := <-tc.chTasks:
+			atomic.AddInt32(&tc.chanSize, -1)
 			try(f)
 
 		case <-chDie:
@@ -98,5 +101,5 @@ func Close() {
 }
 
 func PushTask(task Task) {
-	chTasks <- task
+	tc.pushTask(task)
 }

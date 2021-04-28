@@ -61,8 +61,9 @@ func (p *TaskWithCache) pushTask(task Task) {
 				p.pending = make([]Task, 0)
 				p.muPending.Unlock()
 				p._pushTasks(tmp)
-				atomic.StoreInt32(&p.chanFull, 0)
-				log.Println("tasks queue is empty now!")
+				if atomic.CompareAndSwapInt32(&p.chanFull, 1, 0) {
+					log.Println("tasks queue is empty now!")
+				}
 			}
 			p._pushTask(task)
 		}
@@ -71,8 +72,9 @@ func (p *TaskWithCache) pushTask(task Task) {
 		//task will post new task. if without pending queue, it will dead lock when chan is full.
 		p.muPending.Lock()
 		if len(p.pending) == 0 {
-			atomic.StoreInt32(&p.chanFull, 1)
-			log.Println("tasks queue is full!!!")
+			if atomic.CompareAndSwapInt32(&p.chanFull, 0, 1) {
+				log.Println("tasks queue is full!!!")
+			}
 		}
 		p.pending = append(p.pending, task)
 		p.muPending.Unlock()

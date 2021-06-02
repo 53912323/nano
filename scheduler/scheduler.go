@@ -36,6 +36,8 @@ const (
 	sessionCloseBacklog = 1 << 8
 )
 
+type Task func()
+
 // LocalScheduler schedules task to a customized goroutine
 type LocalScheduler interface {
 	Schedule(Task)

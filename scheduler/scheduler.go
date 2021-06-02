@@ -28,6 +28,7 @@ import (
 
 	"github.com/lonng/nano/internal/env"
 	"github.com/lonng/nano/internal/log"
+	"github.com/smallnest/chanx"
 )
 
 const (
@@ -45,14 +46,10 @@ type Hook func()
 var (
 	chDie   = make(chan struct{})
 	chExit  = make(chan struct{})
-	tc      *TaskWithCache
+	chTask  = chanx.NewUnboundedChan(messageQueueBacklog)
 	started int32
 	closed  int32
 )
-
-func init() {
-	tc = NewTaskWithCache()
-}
 
 func try(f func()) {
 	defer func() {
@@ -81,9 +78,8 @@ func Sched() {
 		case <-ticker.C:
 			cron()
 
-		case f := <-tc.chTasks:
-			atomic.AddInt32(&tc.chanSize, -1)
-			try(f)
+		case f := <-chTask.Out:
+			try(f.(Task))
 
 		case <-chDie:
 			return
@@ -101,5 +97,5 @@ func Close() {
 }
 
 func PushTask(task Task) {
-	tc.pushTask(task)
+	chTask.In <- task
 }

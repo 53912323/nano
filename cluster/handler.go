@@ -416,7 +416,7 @@ func (h *LocalHandler) remoteProcess(session *session.Session, msg *message.Mess
 	}
 }
 
-func (h *LocalHandler) processMessage(agent *agent, msg *message.Message) {
+func (h *LocalHandler) localProcess(agent *agent, msg *message.Message) {
 	metrics.CountMessage()
 
 	var lastMid uint64

@@ -230,7 +230,6 @@ func (h *LocalHandler) handle(conn net.Conn) {
 	// guarantee agent related resource be destroyed
 	defer func() {
 		if !h.currentNode.IsMaster && h.currentNode.AdvertiseAddr == "" {
-			agent.Close()
 			req := &clusterpb.CloseSessionRequest{
 				SessionId: agent.session.ID(),
 			}

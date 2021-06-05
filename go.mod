@@ -17,6 +17,7 @@ require (
 	github.com/sirupsen/logrus v1.6.0
 	github.com/smallnest/chanx v0.0.0-20210518072510-4dd7a490da42
 	github.com/urfave/cli v1.20.1-0.20190203184040-693af58b4d51
+	go.uber.org/zap v1.17.0
 	golang.org/x/crypto v0.0.0-20190510104115-cbcb75029529 // indirect
 	golang.org/x/exp v0.0.0-20190510132918-efd6b22b2522 // indirect
 	golang.org/x/image v0.0.0-20190507092727-e4e5bf290fec // indirect

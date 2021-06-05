@@ -20,11 +20,13 @@
 
 package log
 
-import "go.uber.org/zap"
+import (
+	"go.uber.org/zap"
+)
 
 // Logger represents  the log interface
 type Logger interface {
-	Print(v ...interface{})
+	Info(v ...interface{})
 	Error(v ...interface{})
 	Fatal(v ...interface{})
 	Fatalf(format string, v ...interface{})
@@ -33,7 +35,8 @@ type Logger interface {
 func init() {
 	//SetLogger(log.New(os.Stderr, "", log.LstdFlags|log.Lshortfile))
 	//框架增加错误日志级别输出
-	SetLogger(zap.StandardLogger())
+	logger, _ := zap.NewDevelopment()
+	SetLogger(logger.Sugar())
 }
 
 var (
@@ -48,7 +51,7 @@ func SetLogger(logger Logger) {
 	if logger == nil {
 		return
 	}
-	Println = logger.Print
+	Println = logger.Info
 	Error = logger.Error
 	Fatal = logger.Fatal
 	Fatalf = logger.Fatalf

@@ -69,7 +69,7 @@ type (
 		elapse    int64          // total elapse time
 		lastTime  int64          // 适应改时间的时针
 		closed    int32          // is timer closed
-		counter   int            // counter
+		counter   int32          // counter
 	}
 )
 
@@ -88,7 +88,8 @@ func (t *Timer) Stop() {
 		return
 	}
 
-	t.counter = 0
+	atomic.StoreInt32(&t.counter, 0)
+	//t.counter = 0
 }
 
 // execute job function with protection
@@ -119,7 +120,8 @@ func cron() {
 	now := time.Now()
 	unn := now.UnixNano()
 	for id, t := range timerManager.timers {
-		if t.counter == infinite || t.counter > 0 {
+		c := atomic.LoadInt32(&t.counter)
+		if c == infinite || c > 0 {
 			// condition timer
 			if t.condition != nil {
 				if t.condition.Check(now) {
@@ -134,8 +136,9 @@ func cron() {
 				t.lastTime = unn
 
 				// update timer counter
-				if t.counter != infinite && t.counter > 0 {
-					t.counter--
+				if c != infinite && c > 0 {
+					atomic.AddInt32(&t.counter, -1)
+					c--
 				}
 			}
 
@@ -151,7 +154,7 @@ func cron() {
 
 		}
 
-		if t.counter == 0 {
+		if c == 0 {
 			timerManager.muClosingTimer.Lock()
 			timerManager.closingTimer = append(timerManager.closingTimer, t.id)
 			timerManager.muClosingTimer.Unlock()
@@ -198,7 +201,7 @@ func NewCountTimer(interval time.Duration, count int, fn TimerFunc) *Timer {
 		interval: interval,
 		elapse:   int64(interval),       // first execution will be after interval
 		lastTime: time.Now().UnixNano(), //最后执行时间
-		counter:  count,
+		counter:  int32(count),
 	}
 
 	timerManager.muCreatedTimer.Lock()

@@ -296,8 +296,8 @@ func (h *LocalHandler) handle(conn net.Conn) {
 				}
 			}
 
-			if env.IncreaseCheck {
-				p := packets[i]
+			p := packets[i]
+			if env.IncreaseCheck && p.Type != packet.Heartbeat {
 				if p.Length < 4 {
 					log.Error("packet wrong increase len, disconnect!")
 					agent.Close()
@@ -314,7 +314,7 @@ func (h *LocalHandler) handle(conn net.Conn) {
 				p.Data = p.Data[4:]
 			}
 
-			if err := h.processPacket(agent, packets[i]); err != nil {
+			if err := h.processPacket(agent, p); err != nil {
 				log.Println(err.Error())
 				return
 			}

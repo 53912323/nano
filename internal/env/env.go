@@ -54,8 +54,9 @@ var (
 
 	Serializer serialize.Serializer
 
-	GrpcOptions = []grpc.DialOption{grpc.WithInsecure()}
-	RateLimit   *RateLimitingMaker
+	GrpcOptions   = []grpc.DialOption{grpc.WithInsecure()}
+	RateLimit     *RateLimitingMaker
+	IncreaseCheck bool
 )
 
 func init() {

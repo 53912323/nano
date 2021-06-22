@@ -22,6 +22,7 @@ package cluster
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -294,6 +295,25 @@ func (h *LocalHandler) handle(conn net.Conn) {
 					return
 				}
 			}
+
+			if env.IncreaseCheck {
+				p := packets[i]
+				if p.Length < 4 {
+					log.Error("packet wrong increase len, disconnect!")
+					agent.Close()
+					return
+				}
+				increase := binary.BigEndian.Uint32(p.Data)
+				if agent.increase != 0 && (agent.increase+1) != increase {
+					log.Error("packet wrong increase, disconnect!")
+					agent.Close()
+					return
+				}
+				agent.increase = increase
+				p.Length -= 4
+				p.Data = p.Data[4:]
+			}
+
 			if err := h.processPacket(agent, packets[i]); err != nil {
 				log.Println(err.Error())
 				return

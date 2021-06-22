@@ -64,6 +64,7 @@ type (
 
 		rpcHandler rpcHandler
 		srv        reflect.Value // cached session reflect.Value
+		increase   uint32
 	}
 
 	pendingMessage struct {

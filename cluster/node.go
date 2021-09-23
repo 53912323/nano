@@ -55,8 +55,8 @@ type Options struct {
 	IsWebsocket      bool
 	TSLCertificate   string
 	TSLKey           string
-	FuncBefore       func(session *session.Session, string, msg interface{}) bool
-	FuncAfter        func(session *session.Session, string, msg interface{}) bool
+	FuncBefore       func(session *session.Session, route string, msg interface{}) bool
+	FuncAfter        func(session *session.Session, route string, msg interface{}) bool
 	RateLimit        *env.RateLimitingMaker
 	MetricsReporters []metrics.Reporter
 	MetricsPeriod    time.Duration

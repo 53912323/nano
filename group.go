@@ -133,9 +133,10 @@ func (c *Group) Broadcast(route string, v interface{}) error {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	for _, s := range c.sessions {
+	for k, s := range c.sessions {
 		if err = s.Push(route, data); err != nil {
-			log.Println(fmt.Sprintf("Session push message error, ID=%d, UID=%d, Error=%s", s.ID(), s.UID(), err.Error()))
+			delete(c.sessions, k)
+			//log.Println(fmt.Sprintf("Session push message error, ID=%d, UID=%d, Error=%s", s.ID(), s.UID(), err.Error()))
 		}
 	}
 

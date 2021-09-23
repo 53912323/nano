@@ -521,7 +521,7 @@ func (h *LocalHandler) localProcess(handler *component.Handler, lastMid uint64, 
 			log.Println(fmt.Sprintf("--%s time start ----", handler.Method.Func.String()))
 		}
 		//前置处理
-		if h.currentNode.FuncBefore != nil && !h.currentNode.FuncBefore(session, data) {
+		if h.currentNode.FuncBefore != nil && !h.currentNode.FuncBefore(session, route, data) {
 			if env.Debug {
 				log.Println(fmt.Sprintf("--%s FuncBefore exit ", handler.Method.Func.String()))
 			}
@@ -537,7 +537,7 @@ func (h *LocalHandler) localProcess(handler *component.Handler, lastMid uint64, 
 		}
 		//后置处理
 		if h.currentNode.FuncAfter != nil {
-			h.currentNode.FuncAfter(session, data)
+			h.currentNode.FuncAfter(session, route, data)
 		}
 
 		if env.Debug {

@@ -241,6 +241,9 @@ func (a *agent) write() {
 	chWrite := make(chan []byte, agentWriteBacklog)
 	// clean func
 	defer func() {
+		if err := recover(); err != nil {
+			log.Error("error", err)
+		}
 		ticker.Stop()
 		//close(a.chSend)
 		close(chWrite)

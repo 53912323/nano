@@ -101,3 +101,7 @@ func Close() {
 func PushTask(task Task) {
 	chTask.In <- task
 }
+
+func TaskChanLen() int {
+	return len(chTask.Out)
+}

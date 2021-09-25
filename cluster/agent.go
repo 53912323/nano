@@ -242,7 +242,7 @@ func (a *agent) write() {
 	// clean func
 	defer func() {
 		ticker.Stop()
-		close(a.chSend)
+		//close(a.chSend)
 		close(chWrite)
 		a.Close()
 		if env.Debug {

@@ -49,6 +49,11 @@ type Group struct {
 	sessions map[int64]*session.Session // session id map to session instance
 }
 
+type GroupBroadcastData struct {
+	route string
+	v     interface{}
+}
+
 // NewGroup returns a new group instance
 func NewGroup(n string) *Group {
 	return &Group{
@@ -137,6 +142,34 @@ func (c *Group) Broadcast(route string, v interface{}) error {
 		if err = s.Push(route, data); err != nil {
 			delete(c.sessions, k)
 			//log.Println(fmt.Sprintf("Session push message error, ID=%d, UID=%d, Error=%s", s.ID(), s.UID(), err.Error()))
+		}
+	}
+
+	return err
+}
+
+func (c *Group) BroadcastBatch(list []*GroupBroadcastData) error {
+	if c.isClosed() {
+		return ErrClosedGroup
+	}
+	for k, v := range list {
+		data, err := message.Serialize(v)
+		if err != nil {
+			return err
+		}
+		list[k].v = data
+	}
+
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	var err error
+	for k, s := range c.sessions {
+		for _, v := range list {
+			if err = s.Push(v.route, v.v); err != nil {
+				delete(c.sessions, k)
+				break
+			}
 		}
 	}
 

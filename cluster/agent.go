@@ -36,6 +36,7 @@ import (
 	"github.com/lonng/nano/pipeline"
 	"github.com/lonng/nano/scheduler"
 	"github.com/lonng/nano/session"
+	"github.com/smallnest/chanx"
 )
 
 const (
@@ -57,7 +58,7 @@ type (
 		lastMid  uint64              // last message id
 		state    int32               // current agent state
 		chDie    chan struct{}       // wait for close
-		chSend   chan pendingMessage // push message queue
+		chSend   chanx.UnboundedChan // push message queue
 		lastAt   int64               // last heartbeat unix time stamp
 		decoder  *codec.Decoder      // binary decoder
 		pipeline pipeline.Pipeline
@@ -82,7 +83,7 @@ func newAgent(conn net.Conn, pipeline pipeline.Pipeline, rpcHandler rpcHandler) 
 		state:      statusStart,
 		chDie:      make(chan struct{}),
 		lastAt:     time.Now().Unix(),
-		chSend:     make(chan pendingMessage, agentWriteBacklog),
+		chSend:     chanx.NewUnboundedChan(32),
 		decoder:    codec.NewDecoder(),
 		pipeline:   pipeline,
 		rpcHandler: rpcHandler,
@@ -102,7 +103,7 @@ func (a *agent) send(m pendingMessage) (err error) {
 			err = ErrBrokenPipe
 		}
 	}()
-	a.chSend <- m
+	a.chSend.In <- m
 	return
 }
 
@@ -270,7 +271,8 @@ func (a *agent) write() {
 				return
 			}
 
-		case data := <-a.chSend:
+		case data1 := <-a.chSend.Out:
+			data, _ := data1.(pendingMessage)
 			payload, err := message.Serialize(data.payload)
 			if err != nil {
 				switch data.typ {

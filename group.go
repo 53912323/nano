@@ -54,6 +54,13 @@ type GroupBroadcastData struct {
 	v     interface{}
 }
 
+func NewGroupBroadcastData(route string, v interface{}) *GroupBroadcastData {
+	return &GroupBroadcastData{
+		route: route,
+		v:     v,
+	}
+}
+
 // NewGroup returns a new group instance
 func NewGroup(n string) *Group {
 	return &Group{

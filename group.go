@@ -160,7 +160,7 @@ func (c *Group) BroadcastBatch(list []*GroupBroadcastData) error {
 		return ErrClosedGroup
 	}
 	for k, v := range list {
-		data, err := message.Serialize(v)
+		data, err := message.Serialize(v.v)
 		if err != nil {
 			return err
 		}

@@ -22,6 +22,8 @@ package scheduler
 
 import (
 	"fmt"
+	"reflect"
+	"runtime"
 	"runtime/debug"
 	"sync/atomic"
 	"time"
@@ -65,7 +67,10 @@ func try(f func()) {
 	lastTick = time.Now()
 	f()
 	if lastTick.Add(time.Second / 4).Before(time.Now()) {
-		errInfo := fmt.Sprintf("task time out,stack:\n%s", debug.Stack())
+		v := reflect.ValueOf(f).Pointer()
+		vf := runtime.FuncForPC(v)
+		file, line := vf.FileLine(v)
+		errInfo := fmt.Sprintf("task time out,name:\n%s\nsource:%s:%d", vf.Name(), file, line)
 		log.Error(errInfo)
 	}
 }

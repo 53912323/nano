@@ -46,11 +46,12 @@ type LocalScheduler interface {
 type Hook func()
 
 var (
-	chDie   = make(chan struct{})
-	chExit  = make(chan struct{})
-	chTask  = chanx.NewUnboundedChan(messageQueueBacklog)
-	started int32
-	closed  int32
+	chDie    = make(chan struct{})
+	chExit   = make(chan struct{})
+	chTask   = chanx.NewUnboundedChan(messageQueueBacklog)
+	started  int32
+	closed   int32
+	lastTick time.Time
 )
 
 func try(f func()) {
@@ -61,7 +62,12 @@ func try(f func()) {
 			fmt.Println("--panic--", errInfo)
 		}
 	}()
+	lastTick = time.Now()
 	f()
+	if lastTick.Add(time.Second / 4).Before(time.Now()) {
+		errInfo := fmt.Sprintf("task time out,stack:\n%s", debug.Stack())
+		log.Error(errInfo)
+	}
 }
 
 func Sched() {

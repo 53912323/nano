@@ -205,6 +205,7 @@ func (a *agent) Close() error {
 		log.Println(fmt.Sprintf("Session closed, ID=%d, UID=%d, IP=%s",
 			a.session.ID(), a.session.UID(), a.conn.RemoteAddr()))
 	}
+	close(a.chSend.In)
 
 	// prevent closing closed channel
 	select {

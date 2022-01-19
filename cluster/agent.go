@@ -58,7 +58,7 @@ type (
 		lastMid  uint64              // last message id
 		state    int32               // current agent state
 		chDie    chan struct{}       // wait for close
-		chSend   chanx.UnboundedChan // push message queue
+		chSend   *chanx.UnboundedChan // push message queue
 		lastAt   int64               // last heartbeat unix time stamp
 		decoder  *codec.Decoder      // binary decoder
 		pipeline pipeline.Pipeline

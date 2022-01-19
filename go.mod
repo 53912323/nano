@@ -15,7 +15,7 @@ require (
 	github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8
 	github.com/pingcap/errors v0.11.4
 	github.com/sirupsen/logrus v1.6.0
-	github.com/smallnest/chanx v0.0.0-20210518072510-4dd7a490da42
+	github.com/smallnest/chanx v1.0.0
 	github.com/urfave/cli v1.20.1-0.20190203184040-693af58b4d51
 	go.uber.org/zap v1.17.0
 	golang.org/x/crypto v0.0.0-20190510104115-cbcb75029529 // indirect

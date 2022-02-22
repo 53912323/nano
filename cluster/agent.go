@@ -53,14 +53,14 @@ type (
 	// Agent corresponding a user, used for store raw conn information
 	agent struct {
 		// regular agent member
-		session  *session.Session    // session
-		conn     net.Conn            // low-level conn fd
-		lastMid  uint64              // last message id
-		state    int32               // current agent state
-		chDie    chan struct{}       // wait for close
+		session  *session.Session     // session
+		conn     net.Conn             // low-level conn fd
+		lastMid  uint64               // last message id
+		state    int32                // current agent state
+		chDie    chan struct{}        // wait for close
 		chSend   *chanx.UnboundedChan // push message queue
-		lastAt   int64               // last heartbeat unix time stamp
-		decoder  *codec.Decoder      // binary decoder
+		lastAt   int64                // last heartbeat unix time stamp
+		decoder  *codec.Decoder       // binary decoder
 		pipeline pipeline.Pipeline
 
 		rpcHandler rpcHandler
@@ -205,7 +205,7 @@ func (a *agent) Close() error {
 		log.Println(fmt.Sprintf("Session closed, ID=%d, UID=%d, IP=%s",
 			a.session.ID(), a.session.UID(), a.conn.RemoteAddr()))
 	}
-	close(a.chSend.In)
+	//close(a.chSend.In)
 
 	// prevent closing closed channel
 	select {

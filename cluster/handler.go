@@ -448,6 +448,10 @@ func (h *LocalHandler) processMessage(agent *agent, msg *message.Message) {
 		log.Println("Invalid message type: " + msg.Type.String())
 		return
 	}
+	if h.currentNode.Routable != nil && !h.currentNode.Routable(agent.session, msg.Route) {
+		return
+	}
+
 	if env.ProtoRoute {
 		handler, found := h.localHandlersArgName[msg.Route]
 		if !found {

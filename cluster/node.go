@@ -57,6 +57,7 @@ type Options struct {
 	TSLKey           string
 	FuncBefore       func(session *session.Session, route string, msg interface{}) bool
 	FuncAfter        func(session *session.Session, route string, msg interface{}) bool
+	Routable         func(session *session.Session, route string) bool
 	RateLimit        *env.RateLimitingMaker
 	MetricsReporters []metrics.Reporter
 	MetricsPeriod    time.Duration

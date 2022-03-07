@@ -86,6 +86,12 @@ func WithAfter(funcAfter func(session *session.Session, route string, msg interf
 	}
 }
 
+func WithRoutable(fn func(session *session.Session, route string) bool) Option {
+	return func(opt *cluster.Options) {
+		opt.Routable = fn
+	}
+}
+
 // 流量控制
 func WithRateLimit(limit int, interval time.Duration) Option {
 	return func(_ *cluster.Options) {

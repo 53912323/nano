@@ -70,8 +70,7 @@ func try(f func()) {
 		v := reflect.ValueOf(f).Pointer()
 		vf := runtime.FuncForPC(v)
 		file, line := vf.FileLine(v)
-		errInfo := fmt.Sprintf("task time out,name:\n%s\nsource:%s:%d", vf.Name(), file, line)
-		log.Error(errInfo)
+		log.Warn(fmt.Sprintf("task time out,name:\n%s\nsource:%s:%d", vf.Name(), file, line))
 	}
 }
 

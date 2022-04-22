@@ -65,9 +65,9 @@ func cache() {
 		//"protos":
 	}
 
-	protoMsgJson, err := ioutil.ReadFile("./configs/proto_pomelo.json")
+	protoMsgJson, err := ioutil.ReadFile("./proto/proto_pomelo.json")
 	if err == nil {
-		log.Println("Register proto json ./configs/proto_msg.json")
+		log.Println("Register proto json ./proto/proto_msg.json")
 		var msgJson map[string]interface{}
 		json.Unmarshal(protoMsgJson, &msgJson)
 		sysMap["protos"] = map[string]interface{}{

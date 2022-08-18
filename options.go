@@ -73,7 +73,7 @@ func WithComponents(components *component.Components) Option {
 }
 
 // 前置处理函数
-func WithBefore(funcBefore func(session *session.Session, route string, msg interface{}) bool) Option {
+func WithBefore(funcBefore func(session *session.Session, route string, msg interface{}, int64) bool) Option {
 	return func(opt *cluster.Options) {
 		opt.FuncBefore = funcBefore
 	}

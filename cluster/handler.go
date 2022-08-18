@@ -478,6 +478,9 @@ func (h *LocalHandler) handleWS(conn *websocket.Conn) {
 	go h.handle(c)
 }
 
+//go:linkname RuntimeNano runtime.nanotime
+func RuntimeNano() int64
+
 func (h *LocalHandler) localProcess(handler *component.Handler, lastMid uint64, session *session.Session, msg *message.Message) {
 	org_start := time.Now().UnixNano()
 	if pipe := h.pipeline; pipe != nil {
@@ -507,7 +510,7 @@ func (h *LocalHandler) localProcess(handler *component.Handler, lastMid uint64, 
 
 	session.Set("route", msg.Route)
 	args := []reflect.Value{handler.Receiver, reflect.ValueOf(session), reflect.ValueOf(data)}
-
+	ns := RuntimeNano()
 	task := func() {
 		os := org_start
 		route := msg.Route
@@ -525,7 +528,7 @@ func (h *LocalHandler) localProcess(handler *component.Handler, lastMid uint64, 
 			log.Println(fmt.Sprintf("--%s time start ----", handler.Method.Func.String()))
 		}
 		//前置处理
-		if h.currentNode.FuncBefore != nil && !h.currentNode.FuncBefore(session, route, data) {
+		if h.currentNode.FuncBefore != nil && !h.currentNode.FuncBefore(session, route, data, ns) {
 			if env.Debug {
 				log.Println(fmt.Sprintf("--%s FuncBefore exit ", handler.Method.Func.String()))
 			}

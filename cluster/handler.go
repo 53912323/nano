@@ -34,6 +34,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	_ "unsafe"
 
 	"github.com/gorilla/websocket"
 	"github.com/lonng/nano/cluster/clusterpb"

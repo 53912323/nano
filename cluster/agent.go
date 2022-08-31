@@ -213,7 +213,6 @@ func (a *agent) Close() error {
 		// expect
 	default:
 		close(a.chDie)
-		close(a.chSend.In)
 		scheduler.PushTask(func() { session.Lifetime.Close(a.session) })
 	}
 
@@ -249,6 +248,7 @@ func (a *agent) write() {
 		}
 		ticker.Stop()
 		//close(a.chSend)
+		close(a.chSend.In)
 		close(chWrite)
 		a.Close()
 		if env.Debug {

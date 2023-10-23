@@ -358,8 +358,8 @@ func (h *LocalHandler) processPacket(agent *agent, p *packet.Packet) error {
 
 	case packet.Heartbeat:
 		if agent.session != nil {
-			us := RuntimeNano() - agent.session.GetlastTime()
-			agent.session.AddLatency(us / 2)
+			ns := RuntimeNano() - agent.session.GetlastTime()
+			agent.session.AddLatency(ns / 2)
 		}
 	}
 

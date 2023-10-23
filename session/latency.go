@@ -10,12 +10,12 @@ type LatencyCalc struct {
 	num       int64
 }
 
-func (p *LatencyCalc) AddLatency(us int64) {
+func (p *LatencyCalc) AddLatency(ns int64) {
 	p.Lock()
 	defer p.Unlock()
-	p.latencies[p.num%4] = us
+	p.latencies[p.num%4] = ns
 	p.num++
-	//log.Println(fmt.Sprintf("Latency:%d", us))
+	//log.Println(fmt.Sprintf("Latency:%d", ns))
 }
 
 func (p *LatencyCalc) CalcLatency() int64 {

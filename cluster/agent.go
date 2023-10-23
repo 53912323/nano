@@ -264,6 +264,8 @@ func (a *agent) write() {
 				log.Println(fmt.Sprintf("Session heartbeat timeout, LastTime=%d, Deadline=%d", atomic.LoadInt64(&a.lastAt), deadline))
 				return
 			}
+			
+			a.session.StoreLastTime(RuntimeNano())
 			chWrite <- hbd
 
 		case data := <-chWrite:

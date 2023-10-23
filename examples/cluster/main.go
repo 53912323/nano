@@ -8,6 +8,7 @@ import (
 	"runtime"
 
 	"github.com/lonng/nano"
+	"github.com/lonng/nano/cluster"
 	"github.com/lonng/nano/examples/cluster/chat"
 	"github.com/lonng/nano/examples/cluster/gate"
 	"github.com/lonng/nano/examples/cluster/master"
@@ -111,6 +112,9 @@ func runMaster(args *cli.Context) error {
 		nano.WithComponents(master.Services),
 		nano.WithSerializer(json.NewSerializer()),
 		nano.WithDebugMode(),
+		nano.WithUnregisterCallback(func(m cluster.Member) {
+			log.Println("Todo alarm unregister:", m.String())
+		}),
 	)
 
 	return nil
@@ -123,7 +127,7 @@ func runGate(args *cli.Context) error {
 	}
 
 	masterAddr := args.String("master")
-	if listen == "" {
+	if masterAddr == "" {
 		return errors.Errorf("master address cannot empty")
 	}
 
@@ -146,6 +150,7 @@ func runGate(args *cli.Context) error {
 		nano.WithWSPath("/nano"),
 		nano.WithCheckOriginFunc(func(_ *http.Request) bool { return true }),
 		nano.WithDebugMode(),
+		nano.WithNodeId(2), // if you deploy multi gate, option set nodeId, default nodeId = os.Getpid()
 	)
 	return nil
 }

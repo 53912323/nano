@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/lonng/nano/metrics"
+	"github.com/lonng/nano/service"
 	"github.com/lonng/nano/session"
 
 	"github.com/lonng/nano/cluster"
@@ -22,6 +22,13 @@ type Option func(*cluster.Options)
 func WithPipeline(pipeline pipeline.Pipeline) Option {
 	return func(opt *cluster.Options) {
 		opt.Pipeline = pipeline
+	}
+}
+
+// WithCustomerRemoteServiceRoute register remote service route
+func WithCustomerRemoteServiceRoute(route cluster.CustomerRemoteServiceRoute) Option {
+	return func(opt *cluster.Options) {
+		opt.RemoteServiceRoute = route
 	}
 }
 
@@ -146,7 +153,7 @@ func WithTcpAddr(addr string) Option {
 // SetDictionary sets routes map
 func WithDictionary(dict map[string]uint16) Option {
 	return func(_ *cluster.Options) {
-		env.RouteDict = dict
+		//env.RouteDict = dict
 		message.SetDictionary(dict)
 	}
 }
@@ -206,12 +213,23 @@ func WithLogger(l log.Logger) Option {
 	}
 }
 
-// Metrics
-func WithMetrics(reporters []metrics.Reporter, period time.Duration) Option {
+// WithHandshakeValidator sets the function that Verify `handshake` data
+func WithHandshakeValidator(fn func([]byte) error) Option {
 	return func(opt *cluster.Options) {
-		if len(reporters) > 0 {
-			opt.MetricsReporters = reporters
-			opt.MetricsPeriod = period
-		}
+		env.HandshakeValidator = fn
+	}
+}
+
+// WithNodeId set nodeId use snowflake nodeId generate sessionId, default: pid
+func WithNodeId(nodeId uint64) Option {
+	return func(opt *cluster.Options) {
+		service.ResetNodeId(nodeId)
+	}
+}
+
+// WithUnregisterCallback master unregister member event call fn
+func WithUnregisterCallback(fn func(member cluster.Member)) Option {
+	return func(opt *cluster.Options) {
+		opt.UnregisterCallback = fn
 	}
 }

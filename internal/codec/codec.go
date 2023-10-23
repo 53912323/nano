@@ -98,8 +98,7 @@ func (c *Decoder) Decode(data []byte) ([]*packet.Packet, error) {
 		}
 
 		if err = c.forward(); err != nil {
-			return nil, err
-
+			return packets, err
 		}
 
 	}

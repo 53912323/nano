@@ -25,7 +25,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"net"
 	"reflect"
@@ -44,7 +43,6 @@ import (
 	"github.com/lonng/nano/internal/log"
 	"github.com/lonng/nano/internal/message"
 	"github.com/lonng/nano/internal/packet"
-	"github.com/lonng/nano/metrics"
 	"github.com/lonng/nano/pipeline"
 	"github.com/lonng/nano/scheduler"
 	"github.com/lonng/nano/session"
@@ -58,28 +56,30 @@ var (
 
 type rpcHandler func(session *session.Session, msg *message.Message, noCopy bool)
 
-func cache() {
+// CustomerRemoteServiceRoute customer remote service route
+type CustomerRemoteServiceRoute func(service string, session *session.Session, members []*clusterpb.MemberInfo) *clusterpb.MemberInfo
 
-	sysMap := map[string]interface{}{
-		"heartbeat": env.Heartbeat.Seconds(),
-		"dict":      env.RouteDict,
-		//"protos":
+func cache() {
+	hrdata := map[string]interface{}{
+		"code": 200,
+		"sys": map[string]interface{}{
+			"heartbeat":  env.Heartbeat.Seconds(),
+			"servertime": time.Now().UTC().Unix(),
+		},
 	}
 
-	protoMsgJson, err := ioutil.ReadFile("./proto/proto_pomelo.json")
-	if err == nil {
-		log.Println("Register proto json ./proto/proto_msg.json")
-		var msgJson map[string]interface{}
-		json.Unmarshal(protoMsgJson, &msgJson)
-		sysMap["protos"] = map[string]interface{}{
-			"server": msgJson,
+	if dict, ok := message.GetDictionary(); ok {
+		hrdata = map[string]interface{}{
+			"code": 200,
+			"sys": map[string]interface{}{
+				"heartbeat":  env.Heartbeat.Seconds(),
+				"servertime": time.Now().UTC().Unix(),
+				"dict":       dict,
+			},
 		}
 	}
 
-	data, err := json.Marshal(map[string]interface{}{
-		"code": 200,
-		"sys":  sysMap,
-	})
+	data, err := json.Marshal(hrdata)
 	if err != nil {
 		panic(err)
 	}
@@ -279,25 +279,25 @@ func (h *LocalHandler) handle(conn net.Conn) {
 		packets, err := agent.decoder.Decode(buf[:n])
 		if err != nil {
 			log.Println(err.Error())
-			return
-		}
-
-		if len(packets) < 1 {
-			continue
+			// process packets decoded
+			for _, p := range packets {
+				if err := h.processPacket(agent, p); err != nil {
+					log.Println(err.Error())
+					return
+				}
+			}
 		}
 
 		now := time.Now()
-		// process all packet
-		for i := range packets {
+		// process all packets
+		for _, p := range packets {
 			if h.rateLimiter != nil {
 				if h.rateLimiter.ShouldRateLimit(now) {
-					metrics.ReportExceededRateLimiting(h.currentNode.MetricsReporters)
 					log.Println("Receive packets exceed rate limit!")
 					return
 				}
 			}
 
-			p := packets[i]
 			if env.IncreaseCheck && p.Type == packet.Data {
 				if p.Length < 4 {
 					log.Error("packet wrong increase len, disconnect!")
@@ -326,6 +326,9 @@ func (h *LocalHandler) handle(conn net.Conn) {
 func (h *LocalHandler) processPacket(agent *agent, p *packet.Packet) error {
 	switch p.Type {
 	case packet.Handshake:
+		if err := env.HandshakeValidator(p.Data); err != nil {
+			return err
+		}
 		if _, err := agent.conn.Write(hrd); err != nil {
 			return err
 		}
@@ -354,7 +357,10 @@ func (h *LocalHandler) processPacket(agent *agent, p *packet.Packet) error {
 		h.processMessage(agent, msg)
 
 	case packet.Heartbeat:
-		// expected
+		if agent.session != nil {
+			us := RuntimeNano() - agent.session.GetlastTime()
+			agent.session.AddLatency(us / 2)
+		}
 	}
 
 	atomic.StoreInt64(&agent.lastAt, time.Now().Unix())
@@ -382,14 +388,29 @@ func (h *LocalHandler) remoteProcess(session *session.Session, msg *message.Mess
 	}
 
 	// Select a remote service address
-	// 1. Use the service address directly if the router contains binding item
-	// 2. Select a remote service address randomly and bind to router
+	// 1. if exist customer remote service route ,use it, otherwise use default strategy
+	// 2. Use the service address directly if the router contains binding item
+	// 3. Select a remote service address randomly and bind to router
 	var remoteAddr string
-	if addr, found := session.Router().Find(service); found {
-		remoteAddr = addr
+	if h.currentNode.Options.RemoteServiceRoute != nil {
+		if addr, found := session.Router().Find(service); found {
+			remoteAddr = addr
+		} else {
+			member := h.currentNode.Options.RemoteServiceRoute(service, session, members)
+			if member == nil {
+				log.Println(fmt.Sprintf("customize remoteServiceRoute handler: %s is not found", msg.Route))
+				return
+			}
+			remoteAddr = member.ServiceAddr
+			session.Router().Bind(service, remoteAddr)
+		}
 	} else {
-		remoteAddr = members[rand.Intn(len(members))].ServiceAddr
-		session.Router().Bind(service, remoteAddr)
+		if addr, found := session.Router().Find(service); found {
+			remoteAddr = addr
+		} else {
+			remoteAddr = members[rand.Intn(len(members))].ServiceAddr
+			session.Router().Bind(service, remoteAddr)
+		}
 	}
 	pool, err := h.currentNode.rpcClient.getConnPool(remoteAddr)
 	if err != nil {
@@ -437,8 +458,6 @@ func (h *LocalHandler) remoteProcess(session *session.Session, msg *message.Mess
 }
 
 func (h *LocalHandler) processMessage(agent *agent, msg *message.Message) {
-	metrics.CountMessage()
-
 	var lastMid uint64
 	switch msg.Type {
 	case message.Request:
@@ -483,7 +502,6 @@ func (h *LocalHandler) handleWS(conn *websocket.Conn) {
 func RuntimeNano() int64
 
 func (h *LocalHandler) localProcess(handler *component.Handler, lastMid uint64, session *session.Session, msg *message.Message) {
-	org_start := time.Now().UnixNano()
 	if pipe := h.pipeline; pipe != nil {
 		err := pipe.Inbound().Process(session, msg)
 		if err != nil {
@@ -513,10 +531,8 @@ func (h *LocalHandler) localProcess(handler *component.Handler, lastMid uint64, 
 	args := []reflect.Value{handler.Receiver, reflect.ValueOf(session), reflect.ValueOf(data)}
 	ns := RuntimeNano()
 	task := func() {
-		os := org_start
 		route := msg.Route
 
-		metrics.ReportMessageProcessDelay(os, h.currentNode.MetricsReporters, route)
 		switch v := session.NetworkEntity().(type) {
 		case *agent:
 			v.lastMid = lastMid
@@ -537,7 +553,6 @@ func (h *LocalHandler) localProcess(handler *component.Handler, lastMid uint64, 
 		}
 
 		result := handler.Method.Func.Call(args)
-		metrics.ReportTiming(os, h.currentNode.MetricsReporters, route)
 		if len(result) > 0 {
 			if err := result[0].Interface(); err != nil {
 				log.Println(fmt.Sprintf("Service %s error: %+v", msg.Route, err))

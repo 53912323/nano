@@ -36,7 +36,6 @@ import (
 	"github.com/lonng/nano/internal/env"
 	"github.com/lonng/nano/internal/log"
 	"github.com/lonng/nano/internal/message"
-	"github.com/lonng/nano/metrics"
 	"github.com/lonng/nano/pipeline"
 	"github.com/lonng/nano/scheduler"
 	"github.com/lonng/nano/session"
@@ -45,22 +44,22 @@ import (
 
 // Options contains some configurations for current node
 type Options struct {
-	Pipeline         pipeline.Pipeline
-	IsMaster         bool
-	AdvertiseAddr    string
-	RetryInterval    time.Duration
-	ClientAddr       string
-	Components       *component.Components
-	Label            string
-	IsWebsocket      bool
-	TSLCertificate   string
-	TSLKey           string
-	FuncBefore       func(session *session.Session, route string, msg interface{}, ns int64) bool
-	FuncAfter        func(session *session.Session, route string, msg interface{}) bool
-	Routable         func(session *session.Session, route string) bool
-	RateLimit        *env.RateLimitingMaker
-	MetricsReporters []metrics.Reporter
-	MetricsPeriod    time.Duration
+	Pipeline           pipeline.Pipeline
+	IsMaster           bool
+	AdvertiseAddr      string
+	RetryInterval      time.Duration
+	ClientAddr         string
+	Components         *component.Components
+	Label              string
+	IsWebsocket        bool
+	TSLCertificate     string
+	TSLKey             string
+	UnregisterCallback func(Member)
+	RemoteServiceRoute CustomerRemoteServiceRoute
+	FuncBefore         func(session *session.Session, route string, msg interface{}, ns int64) bool
+	FuncAfter          func(session *session.Session, route string, msg interface{}) bool
+	Routable           func(session *session.Session, route string) bool
+	RateLimit          *env.RateLimitingMaker
 }
 
 // Node represents a node in nano cluster, which will contains a group of services.
@@ -137,19 +136,9 @@ func (n *Node) Startup() error {
 				n.listenAndServe(addr)
 			}()
 		}
-
-		n.startMetrics()
 	}
 
 	return nil
-}
-
-func (n *Node) startMetrics() {
-	if len(n.Options.MetricsReporters) == 0 {
-		return
-	}
-
-	go metrics.ReportSysMetrics(n.Options.MetricsReporters, n.Options.MetricsPeriod)
 }
 
 func (n *Node) Handler() *LocalHandler {
@@ -391,7 +380,6 @@ func (n *Node) listenAndServeWSTLS() {
 func (n *Node) storeSession(s *session.Session) {
 	n.mu.Lock()
 	n.sessions[s.ID()] = s
-	metrics.ReportNumberOfConnectedClients(n.Options.MetricsReporters, int64(len(n.sessions)))
 	n.mu.Unlock()
 }
 
@@ -496,9 +484,7 @@ func (n *Node) SessionClosed(_ context.Context, req *clusterpb.SessionClosedRequ
 	n.mu.Lock()
 	s, found := n.sessions[req.SessionId]
 	delete(n.sessions, req.SessionId)
-	l := len(n.sessions)
 	n.mu.Unlock()
-	metrics.ReportNumberOfConnectedClients(n.Options.MetricsReporters, int64(l))
 	if found {
 		scheduler.PushTask(func() { session.Lifetime.Close(s) })
 	}
@@ -510,11 +496,51 @@ func (n *Node) CloseSession(_ context.Context, req *clusterpb.CloseSessionReques
 	n.mu.Lock()
 	s, found := n.sessions[req.SessionId]
 	delete(n.sessions, req.SessionId)
-	l := len(n.sessions)
 	n.mu.Unlock()
 	if found {
 		s.Close()
 	}
-	metrics.ReportNumberOfConnectedClients(n.Options.MetricsReporters, int64(l))
 	return &clusterpb.CloseSessionResponse{}, nil
 }
+
+/*暂屏蔽 主从心跳检查
+// ticker send heartbeat register info to master
+func (n *Node) keepalive() {
+	if n.keepaliveExit == nil {
+		n.keepaliveExit = make(chan struct{})
+	}
+	if n.AdvertiseAddr == "" || n.IsMaster {
+		return
+	}
+	heartbeat := func() {
+		pool, err := n.rpcClient.getConnPool(n.AdvertiseAddr)
+		if err != nil {
+			log.Println("rpcClient master conn", err)
+			return
+		}
+		masterCli := clusterpb.NewMasterClient(pool.Get())
+		if _, err := masterCli.Heartbeat(context.Background(), &clusterpb.HeartbeatRequest{
+			MemberInfo: &clusterpb.MemberInfo{
+				Label:       n.Label,
+				ServiceAddr: n.ServiceAddr,
+				Services:    n.handler.LocalService(),
+			},
+		}); err != nil {
+			log.Println("Member send heartbeat error", err)
+		}
+	}
+	go func() {
+		ticker := time.NewTicker(env.Heartbeat)
+		for {
+			select {
+			case <-ticker.C:
+				heartbeat()
+			case <-n.keepaliveExit:
+				log.Println("Exit member node heartbeat ")
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+}
+*/

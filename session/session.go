@@ -22,7 +22,6 @@ package session
 
 import (
 	"errors"
-	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -59,25 +58,18 @@ type Session struct {
 	entity       NetworkEntity          // low-level network entity
 	data         map[string]interface{} // session data store
 	router       *Router
-	callInitTime int64         //每个消息调用开始
-	callTimes    []msgCallTime //打点记录
-}
-type msgCallTime struct {
-	Name string
-	Diff int64
+	LatencyCalc
 }
 
 // New returns a new session instance
 // a NetworkEntity is a low-level network instance
 func New(entity NetworkEntity) *Session {
 	return &Session{
-		id:           service.Connections.SessionID(),
-		entity:       entity,
-		data:         make(map[string]interface{}),
-		lastTime:     time.Now().Unix(),
-		router:       newRouter(),
-		callInitTime: 0,
-		callTimes:    make([]msgCallTime, 0),
+		id:       service.Connections.SessionID(),
+		entity:   entity,
+		data:     make(map[string]interface{}),
+		lastTime: time.Now().Unix(),
+		router:   newRouter(),
 	}
 }
 
@@ -434,29 +426,10 @@ func (s *Session) Deattach() {
 	s.entity = nil
 }
 
-//-----用于统计各节点性能-----
-//重置打点时间
-func (s *Session) ResetCallTime() {
-	s.callInitTime = time.Now().UnixNano()
-	s.callTimes = s.callTimes[:0]
+func (s *Session) GetlastTime() int64 {
+	return atomic.LoadInt64(&s.lastTime)
 }
 
-//返回毫秒时间
-func (s *Session) AddCallTime(name string) int64 {
-	now := time.Now().UnixNano()
-	diff := (now - s.callInitTime) / 1e6
-	s.callTimes = append(s.callTimes, msgCallTime{name, diff})
-	return diff
-}
-
-func (s *Session) FormatCallTime() string {
-	out := ""
-	var last int64
-	for i, node := range s.callTimes {
-		diff := node.Diff - last
-		out += fmt.Sprintf("%d,%s: %d ; ", i+1, node.Name, diff)
-		last = node.Diff
-	}
-	out += fmt.Sprintf("all: %d ; ", last)
-	return out
+func (s *Session) StoreLastTime(lastTime int64) {
+	atomic.StoreInt64(&s.lastTime, lastTime)
 }
